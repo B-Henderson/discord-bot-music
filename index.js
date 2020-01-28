@@ -9,8 +9,7 @@ client.login(token);
 const execute = async (msg, serverQueue) => {
   const args = msg.content.split(' ');
   const voiceChannel = msg.member.voiceChannel;
-  if (!voiceChannel)
-    return msg.channel.send('you need to be in a voice channel to play music');
+  if (!voiceChannel) return userNotInChannel(msg);
   const permissions = voiceChannel.permissionsFor(msg.client.user);
   if (!permissions.has('CONNECT') || !permissions.has('SPEAK')) {
     return msg.channel.send(
@@ -70,6 +69,25 @@ const play = (guild, song) => {
   dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
 };
 
+const skip = (msg, serverQueue) => {
+  if (!msg.member.voiceChannel) return userNotInChannel(msg);
+  if (!serverQueue) return msg.channel.send('There is no song to skip');
+  serverQueue.connection.dispatcher.end();
+};
+
+const stop = (msg, serverQueue) => {
+  if (!msg.member.voiceChannel) return userNotInChannel(msg);
+
+  serverQueue.songs = [];
+  serverQueue.connection.dispatcher.end();
+};
+
+const pause = (msg, serverQueue) => {};
+
+const userNotInChannel = msg => {
+  msg.channel.send('You must be in a voice channel to skip the music');
+};
+
 client.once('ready', () => {
   console.log('Ready!');
 });
@@ -84,23 +102,14 @@ client.on('message', async msg => {
   const serverQueue = queue.get(msg.guild.id);
 
   if (msg.author.bot || !msg.content.startsWith(prefix)) return;
-  switch (msg) {
-    case `${prefix}play`:
-      execute(msg, serverQueue);
-      break;
-    case `${prefix}skip`:
-      execute(msg, serverQueue);
-      break;
-    case `${prefix}stop`:
-      execute(msg, serverQueue);
-      break;
-    case `ping`:
-      msg.reply('Pong');
-      break;
-    default:
-      msg.channel.send('invalid command');
+
+  if (msg.content.startsWith(`${prefix}play`)) {
+    execute(msg, serverQueue);
+  } else if (msg.content.startsWith(`${prefix}skip`)) {
+    skip(msg, serverQueue);
+  } else if (msg.content.startsWith(`${prefix}stop`)) {
+    stop(msg, serverQueue);
+  } else {
+    msg.channel.send('invalid command');
   }
-  // if (msg.content === 'ping') {
-  //   msg.reply('Pong');
-  // }
 });
